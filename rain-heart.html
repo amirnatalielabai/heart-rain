@@ -14,7 +14,6 @@
       background: linear-gradient(180deg,var(--bg1),var(--bg2));
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       overflow:hidden;
-      display:flex;align-items:center;justify-content:center;
     }
 
     /* container covers full viewport and holds hearts */
@@ -22,33 +21,26 @@
       position:fixed;inset:0;pointer-events:none;overflow:hidden;
     }
 
-    /* heart shape built with a rotated square plus two circles */
+    /* heart base */
     .heart{
       position:absolute;
       width:32px; height:32px;
       transform: rotate(-45deg);
       transform-origin: center;
-      top:-10vh; /* start above viewport */
+      top:-12vh; /* start above viewport */
       will-change: transform, opacity;
       opacity:0.95;
       animation-name: fall, sway;
       animation-timing-function: linear, ease-in-out;
       animation-iteration-count: 1, infinite;
       animation-fill-mode: forwards;
-      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.06));
-    }
-    .heart::before,
-    .heart::after{
-      content:"";
-      position:absolute;
-      width:100%; height:100%;
-      border-radius:50%;
-      left:0; top:0;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.06));
+      mix-blend-mode: screen;
     }
 
     /* fall moves the heart from top to below the viewport */
     @keyframes fall{
-      0%{transform: translateY(-20vh) rotate(-45deg) scale(0.9); opacity:0}
+      0%{transform: translateY(-24vh) rotate(-45deg) scale(0.9); opacity:0}
       6%{opacity:0.95}
       100%{transform: translateY(120vh) rotate(45deg) scale(1.05); opacity:0.95}
     }
@@ -56,115 +48,87 @@
     /* sway gives a side-to-side floating motion */
     @keyframes sway{
       0%{transform: translateX(0) rotate(-45deg)}
-      50%{transform: translateX(30px) rotate(-40deg)}
-      100%{transform: translateX(-20px) rotate(-50deg)}
+      50%{transform: translateX(28px) rotate(-40deg)}
+      100%{transform: translateX(-22px) rotate(-50deg)}
     }
 
-    /* optional center content (demo title) */
-    .center-card{
-      position:relative;z-index:5;padding:24px 34px;border-radius:16px;text-align:center;
-      background: rgba(255,255,255,0.55);backdrop-filter: blur(6px);box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    }
-    .center-card h1{margin:0 0 6px;font-size:20px;color:#7c2b4b}
-    .center-card p{margin:0;font-size:13px;color:#8b3b5f;opacity:0.9}
-
-    /* small responsive tweaks */
-    @media (max-width:420px){
-      .center-card{padding:16px 20px;border-radius:12px}
-    }
   </style>
 </head>
 <body>
   <div class="sky" id="sky"></div>
 
-  <div class="center-card" aria-hidden>
-    <h1>pink pastel heart rain</h1>
-    <p>refresh or click to make more ♥</p>
-  </div>
-
   <script>
-    // Configuration - tweak these for density, sizes, speed
-    const CONFIG = {
-      spawnInterval: 220,        // ms between new hearts (smaller = more hearts)
-      maxHearts: 140,            // maximum simultaneous hearts
-      sizeMin: 12,               // px
-      sizeMax: 56,               // px
-      durationMin: 4000,         // ms fall duration
-      durationMax: 10000,        // ms
-      hueRange: [320, 355],      // hue range for pink spectrum
-      saturation: 60,            // percent
-      lightness: 85             // percent (pastel = high lightness)
-    };
+    // Standalone heart rain (no user interaction required)
+    const SPAWN_INTERVAL = 180;      // ms between new hearts
+    const MAX_HEARTS = 120;          // maximum simultaneous hearts
+    const SIZE_MIN = 14;             // px
+    const SIZE_MAX = 52;             // px
+    const DURATION_MIN = 4200;       // ms
+    const DURATION_MAX = 9800;       // ms
+    const HUE_MIN = 320;             // pink range
+    const HUE_MAX = 355;
+    const SAT = 60;                  // saturation percent
+    const LIG = 86;                  // lightness percent (pastel)
 
     const sky = document.getElementById('sky');
-    let hearts = 0;
-    let spawnTimer = null;
+    let heartsCount = 0;
 
     function rand(min, max){ return Math.random()*(max-min)+min }
 
-    function pinkColor(){
-      const h = rand(CONFIG.hueRange[0], CONFIG.hueRange[1]);
-      const s = CONFIG.saturation + rand(-7,7);
-      const l = CONFIG.lightness + rand(-6,6);
-      return `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`;
+    function pastelPink(){
+      const h = Math.round(rand(HUE_MIN, HUE_MAX));
+      const s = Math.round(SAT + rand(-6,6));
+      const l = Math.round(LIG + rand(-5,5));
+      return `hsl(${h} ${s}% ${l}%)`;
     }
 
-    function createHeart(xPercent){
-      if(hearts >= CONFIG.maxHearts) return null;
-      hearts++;
+    function createHeart(){
+      if(heartsCount >= MAX_HEARTS) return null;
+      heartsCount++;
       const el = document.createElement('div');
       el.className = 'heart';
 
-      const size = Math.round(rand(CONFIG.sizeMin, CONFIG.sizeMax));
+      const size = Math.round(rand(SIZE_MIN, SIZE_MAX));
       el.style.width = size + 'px';
       el.style.height = size + 'px';
 
-      // set color variable
-      const c = pinkColor();
-      el.style.background = c;
-      el.style.setProperty('--color', c);
-      el.style.setProperty('--size', size + 'px');
+      const color = pastelPink();
+      // base square color (rotated) will act as the heart body
+      el.style.background = color;
 
-      // circles for the top halves
-      el.style.setProperty('--before-after-bg', c);
-      el.style.setProperty('border-radius', '8%');
-      el.style.left = (typeof xPercent === 'number' ? xPercent : rand(2, 98)) + 'vw';
+      // position horizontally across the viewport
+      el.style.left = rand(2, 96) + 'vw';
 
-      // random horizontal offset inside the viewport
-      const duration = Math.round(rand(CONFIG.durationMin, CONFIG.durationMax));
-      el.style.animationDuration = duration + 'ms, ' + (rand(2500, 6000)) + 'ms';
-
-      // tune starting opacity & small variation in rotation
-      el.style.opacity = 0.95;
-      el.style.transform = 'rotate(-45deg)';
-
-      // create pseudo-circles using child elements (safer for inline style)
-      const leftCircle = document.createElement('div');
-      const rightCircle = document.createElement('div');
-      [leftCircle, rightCircle].forEach(circle => {
-        circle.style.position = 'absolute';
-        circle.style.width = '100%';
-        circle.style.height = '100%';
-        circle.style.borderRadius = '50%';
-        circle.style.left = '0';
-        circle.style.top = '0';
-        circle.style.background = c;
+      // create two circles to form the top of the heart
+      const left = document.createElement('div');
+      const right = document.createElement('div');
+      [left, right].forEach(c=>{
+        c.style.position = 'absolute';
+        c.style.width = '100%';
+        c.style.height = '100%';
+        c.style.borderRadius = '50%';
+        c.style.left = '0';
+        c.style.top = '0';
+        c.style.background = color;
       });
-      // position circles to form a heart
-      leftCircle.style.transform = 'translate(-50%, -20%)';
-      rightCircle.style.transform = 'translate(50%, -20%)';
+      left.style.transform = 'translate(-50%, -22%)';
+      right.style.transform = 'translate(50%, -22%)';
+      el.appendChild(left);
+      el.appendChild(right);
 
-      el.appendChild(leftCircle);
-      el.appendChild(rightCircle);
+      // set animation durations (fall,long) and sway duration
+      const fallDuration = Math.round(rand(DURATION_MIN, DURATION_MAX));
+      const swayDuration = Math.round(rand(2400, 6200));
+      el.style.animationDuration = fallDuration + 'ms, ' + swayDuration + 'ms';
 
-      // remove heart after its fall animation finishes
-      const removeAfter = duration + 1200;
+      // fade-out cleanup after finish
+      const removeAfter = fallDuration + 1200;
       setTimeout(()=>{
         el.style.transition = 'opacity 600ms linear';
         el.style.opacity = 0;
         setTimeout(()=>{
           if(el.parentNode) el.parentNode.removeChild(el);
-          hearts = Math.max(0, hearts-1);
+          heartsCount = Math.max(0, heartsCount-1);
         }, 700);
       }, removeAfter);
 
@@ -172,39 +136,30 @@
       return el;
     }
 
-    // spawn hearts at intervals
-    function startSpawning(){
-      if(spawnTimer) return;
-      spawnTimer = setInterval(()=>{
-        createHeart();
-      }, CONFIG.spawnInterval);
-    }
+    // continuous spawning
+    const spawner = setInterval(()=>{
+      // spawn 1-3 hearts each tick for a fuller rain
+      const burst = Math.random() < 0.35 ? 3 : (Math.random() < 0.5 ? 2 : 1);
+      for(let i=0;i<burst;i++){
+        setTimeout(createHeart, i*90);
+      }
+    }, SPAWN_INTERVAL);
 
-    function stopSpawning(){
-      if(!spawnTimer) return;
-      clearInterval(spawnTimer); spawnTimer = null;
-    }
-
-    // start when page loads
-    startSpawning();
-
-    // click or tap to pop a small burst where the user clicked
-    window.addEventListener('pointerdown', (e)=>{
-      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-      const xPercent = (e.clientX / vw) * 100;
-      // spawn a small burst
-      for(let i=0;i<6;i++){
-        setTimeout(()=>createHeart(xPercent + rand(-6,6)), i*30);
+    // conserve resources when tab not visible
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden){
+        clearInterval(spawner);
+      } else {
+        // restart interval
+        setInterval(()=>{
+          const burst = Math.random() < 0.35 ? 3 : (Math.random() < 0.5 ? 2 : 1);
+          for(let i=0;i<burst;i++) setTimeout(createHeart, i*90);
+        }, SPAWN_INTERVAL);
       }
     });
 
-    // visibility: pause when not visible to preserve resources
-    document.addEventListener('visibilitychange', ()=>{
-      if(document.hidden) stopSpawning(); else startSpawning();
-    });
-
-    // create a few initial hearts for immediate effect
-    for(let i=0;i<12;i++) setTimeout(()=>createHeart(), i*120);
+    // seed some initial hearts so the page isn't empty for a moment
+    for(let i=0;i<16;i++) setTimeout(createHeart, i*140);
   </script>
 </body>
 </html>
