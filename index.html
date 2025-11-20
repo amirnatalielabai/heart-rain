@@ -77,7 +77,7 @@
 
   <script>
     const SPAWN_INTERVAL = 150;     
-    const MAX_HEARTS = 150;        
+    const MAX_HEARTS = 300;        
     const SIZE_MIN = 10;           
     const SIZE_MAX = 40;           
     const DURATION_MIN = 3000;     
@@ -121,7 +121,7 @@
 
       // Randomize animation speeds
       const fallDuration = Math.round(rand(DURATION_MIN, DURATION_MAX));
-      const swayDuration = Math.round(rand(1000, 10000));
+      const swayDuration = Math.round(rand(2000, 5000));
       
       wrapper.style.animationDuration = fallDuration + 'ms';
       heart.style.animationDuration = swayDuration + 'ms';
@@ -129,6 +129,8 @@
       // Assemble
       wrapper.appendChild(heart);
       sky.appendChild(wrapper);
+
+      wrapper.style.left = Math.random() * 100 + "vw";
 
       // Cleanup
       setTimeout(() => {
@@ -167,3 +169,4 @@
 </body>
 
 </html>
+
